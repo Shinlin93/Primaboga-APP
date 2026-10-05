@@ -11,9 +11,9 @@ import Pengaturan from "./pages/Pengaturan";
 
 export default function App() {
   return (
-    <div className="flex">
+    <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 h-screen overflow-y-auto p-6">
+      <main className="flex-1 h-screen overflow-y-auto p-3">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/penjualan" element={<Penjualan />} />

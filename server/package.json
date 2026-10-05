@@ -1,0 +1,26 @@
+{
+  "name": "primaboga-server",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "cors": "^2.8.5",
+    "docxtemplater": "^3.50.0",
+    "express": "^4.19.2",
+    "express-async-errors": "^3.1.1",
+    "pizzip": "^3.1.7"
+  },
+  "devDependencies": {
+    "prisma": "^5.20.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+}

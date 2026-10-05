@@ -1,0 +1,94 @@
+// Primaboga Cookware — Sistem Penjualan Cash & Kredit
+// SQLite local database, diakses via Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Produk {
+  id        Int             @id @default(autoincrement())
+  nama      String
+  harga     Int
+  status    Boolean         @default(true) // aktif / nonaktif
+  items     PenjualanItem[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model Sales {
+  id        Int         @id @default(autoincrement())
+  nama      String
+  hp        String?
+  status    Boolean     @default(true)
+  penjualan Penjualan[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Pelanggan {
+  id        Int         @id @default(autoincrement())
+  nama      String
+  alamat    String?
+  hp        String?
+  ktp       String?
+  catatan   String?
+  penjualan Penjualan[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+// Satu transaksi bisa berisi banyak item (lihat PenjualanItem)
+model Penjualan {
+  id             Int             @id @default(autoincrement())
+  nomorTransaksi String          @unique
+  tanggal        DateTime
+  pelangganId    Int
+  pelanggan      Pelanggan       @relation(fields: [pelangganId], references: [id])
+  salesId        Int
+  sales          Sales           @relation(fields: [salesId], references: [id])
+  // snapshot nama, supaya histori tidak berubah walau data pelanggan/sales diedit nanti
+  pelangganNama  String
+  salesNama      String
+  metode         String          // "CASH" | "KREDIT"
+  totalHarga     Int             // jumlah semua item
+  status         String          @default("SELESAI") // SELESAI | DIBATALKAN
+  items          PenjualanItem[]
+  cicilan        Cicilan[]
+  createdAt      DateTime        @default(now())
+}
+
+model PenjualanItem {
+  id          Int       @id @default(autoincrement())
+  penjualanId Int
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  produkId    Int
+  produk      Produk    @relation(fields: [produkId], references: [id])
+  namaBarang  String    // snapshot nama produk saat transaksi
+  hargaSatuan Int       // snapshot harga saat transaksi
+  qty         Int
+  subtotal    Int       // hargaSatuan * qty
+}
+
+model Cicilan {
+  id                Int       @id @default(autoincrement())
+  penjualanId       Int
+  penjualan         Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  cicilanKe         Int
+  nominal           Int
+  tanggalJatuhTempo DateTime
+  tanggalBayar      DateTime?
+  status            String    @default("BELUM_LUNAS") // BELUM_LUNAS | LUNAS
+
+  @@unique([penjualanId, cicilanKe])
+}
+
+// counter sederhana untuk nomor transaksi berurutan (TRX000001, TRX000002, ...)
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}

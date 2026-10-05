@@ -1,0 +1,36 @@
+{
+  "name": "primaboga-cookware-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistem Penjualan Cash & Kredit — Primaboga Cookware",
+  "main": "electron/main.js",
+  "scripts": {
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "db:setup": "cd server && npx prisma migrate dev --name init && npx prisma db seed",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\" \"npm:dev:electron\"",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "build:client": "cd client && npm run build",
+    "build": "npm run build:client && electron-builder"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4",
+    "electron": "^32.3.3",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.primaboga.cookware",
+    "productName": "Primaboga Cookware",
+    "files": [
+      "electron/**/*",
+      "client/dist/**/*",
+      "server/**/*",
+      "!server/node_modules/.cache"
+    ],
+    "directories": {
+      "output": "dist-electron"
+    }
+  }
+}

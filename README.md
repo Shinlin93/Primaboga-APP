@@ -92,11 +92,20 @@ Hasil installer ada di folder `dist-electron/`.
 
 - Maksimal 15 produk aktif.
 - Harga kredit = harga cash, tanpa bunga.
-- Kredit selalu dibagi rata **10x cicilan** (`total harga transaksi ÷ 10`, dibulatkan).
+- Kredit selalu dibagi rata **10x cicilan** (`total harga transaksi ÷ 10`, dibulatkan ke bawah). Sisa pembulatan ditanggung cicilan ke-10, sehingga jumlah 10 cicilan selalu persis sama dengan total harga.
 - Saat transaksi kredit dibuat, sistem otomatis membuat 10 jadwal cicilan; **cicilan ke-1 langsung berstatus Lunas** (dianggap pembayaran pertama saat struk dicetak).
 - Tanggal jatuh tempo cicilan berikutnya: tanggal transaksi + n bulan, dengan aturan **clamp ke tanggal terakhir bulan** kalau bulan tersebut lebih pendek (mis. transaksi tgl 31 → Februari jatuh tempo tgl 28/29, tapi Maret kembali ke tgl 31).
 - Satu transaksi bisa berisi **lebih dari satu barang** (multi-item), total harga dijumlah dulu baru dibagi 10 kalau kredit.
 - Struk dan bukti pembayaran cicilan dicetak sebagai file **Word (.docx)** yang otomatis terisi dari data transaksi — bukan cetak langsung ke printer Dot Matrix. Kasir tinggal buka file hasil download lalu print manual.
+
+## Pembayaran Cicilan (bisa sebagian / berbeda tiap bulan)
+
+- Jadwal 10 cicilan **tidak berubah**. Setiap uang yang masuk dicatat sebagai satu **Pembayaran** (tabel `Pembayaran`) dan dialokasikan ke cicilan paling lama yang belum lunas.
+- Contoh (harga Rp1.000.000, cicilan Rp100.000): bayar Rp75.000 → cicilan ke-2 berstatus *Sebagian* (sisa Rp25.000). Bayar lagi Rp50.000 → Rp25.000 melunasi cicilan ke-2 dan Rp25.000 masuk cicilan ke-3.
+- **Sisa piutang** = total tagihan − total terbayar. **Tunggakan** = total yang seharusnya sudah dibayar sampai hari ini − total terbayar.
+- Jumlah bayar yang melebihi sisa piutang ditolak. Pelanggan boleh melunasi lebih cepat dari 10 bulan.
+- Catatan pembayaran tidak bisa diedit atau dihapus (jejak audit). Bukti pembayaran bisa dicetak ulang kapan saja dan menampilkan saldo pada saat pembayaran terjadi.
+- Setelah update ini, jalankan `cd server && npx prisma migrate dev` sekali (**backup `primaboga.db` dulu**). Cicilan yang sudah Lunas dimigrasi otomatis.
 
 ## Keterbatasan versi ini (lihat juga bagian "Rencana Pengembangan" di halaman Pengaturan)
 
@@ -104,7 +113,6 @@ Hasil installer ada di folder `dist-electron/`.
 - Belum ada backup otomatis — disarankan sesekali menyalin file `server/primaboga.db` secara manual ke tempat aman.
 - Export Laporan ke PDF/Excel belum diimplementasikan (baru filter + tampilan tabel); tinggal ditambahkan endpoint export sesuai kebutuhan.
 - Nomor transaksi (`TRX000001`, dst.) terus berurutan dan tidak reset otomatis per bulan/tahun.
-- Belum ada penanganan pembayaran cicilan sebagian (partial payment) — setiap cicilan hanya bisa lunas penuh.
 
 ## Troubleshooting
 

@@ -59,6 +59,7 @@ model Penjualan {
   status         String          @default("SELESAI") // SELESAI | DIBATALKAN
   items          PenjualanItem[]
   cicilan        Cicilan[]
+  pembayaran     Pembayaran[]
   createdAt      DateTime        @default(now())
 }
 
@@ -80,11 +81,31 @@ model Cicilan {
   penjualan         Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
   cicilanKe         Int
   nominal           Int
+  terbayar          Int       @default(0) // akumulasi uang yang sudah masuk untuk cicilan ini
   tanggalJatuhTempo DateTime
-  tanggalBayar      DateTime?
-  status            String    @default("BELUM_LUNAS") // BELUM_LUNAS | LUNAS
+  tanggalBayar      DateTime? // diisi saat cicilan menjadi LUNAS
+  status            String    @default("BELUM_LUNAS") // BELUM_LUNAS | SEBAGIAN | LUNAS
 
   @@unique([penjualanId, cicilanKe])
+}
+
+// Catatan setiap uang cicilan yang masuk. Tidak pernah diedit/dihapus (jejak audit).
+// Kolom *Setelah adalah snapshot saldo pada saat pembayaran, supaya cetak ulang bukti tetap akurat.
+model Pembayaran {
+  id                   Int       @id @default(autoincrement())
+  penjualanId          Int
+  penjualan            Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  tanggal              DateTime  @default(now())
+  jumlah               Int
+  catatan              String?
+  cicilanDari          Int       // cicilan pertama yang tersentuh pembayaran ini
+  cicilanSampai        Int       // cicilan terakhir yang tersentuh pembayaran ini
+  totalTerbayarSetelah Int
+  sisaPiutangSetelah   Int
+  tunggakanSetelah     Int       @default(0)
+  createdAt            DateTime  @default(now())
+
+  @@index([penjualanId])
 }
 
 // counter sederhana untuk nomor transaksi berurutan (TRX000001, TRX000002, ...)

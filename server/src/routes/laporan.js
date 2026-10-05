@@ -41,11 +41,11 @@ router.get("/cicilan", async (req, res) => {
   const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-  if (filter === "belum_lunas") where.status = "BELUM_LUNAS";
+  if (filter === "belum_lunas") where.status = { in: ["BELUM_LUNAS", "SEBAGIAN"] };
   else if (filter === "lunas") where.status = "LUNAS";
   else if (filter === "jatuh_tempo_hari_ini") {
     where.tanggalJatuhTempo = { gte: startToday, lte: endToday };
-    where.status = "BELUM_LUNAS";
+    where.status = { in: ["BELUM_LUNAS", "SEBAGIAN"] };
   } else if (filter === "bulan_ini") {
     where.tanggalJatuhTempo = { gte: startMonth, lte: endMonth };
   }

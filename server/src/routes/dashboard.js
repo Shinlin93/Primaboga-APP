@@ -24,7 +24,10 @@ router.get("/", async (req, res) => {
     }),
     prisma.pelanggan.count(),
     prisma.sales.count({ where: { status: true } }),
-    prisma.cicilan.findMany({ where: { status: "BELUM_LUNAS" }, select: { nominal: true } }),
+    prisma.cicilan.findMany({
+      where: { status: { not: "LUNAS" }, penjualan: { status: "SELESAI" } },
+      select: { nominal: true, terbayar: true },
+    }),
   ]);
 
   const jumlahCash = penjualanHariIni.filter((p) => p.metode === "CASH").length;
@@ -33,7 +36,8 @@ router.get("/", async (req, res) => {
   // supaya konsisten dengan "Total Piutang" di bawah (lihat catatan desain).
   const omzetHariIni = penjualanHariIni.reduce((sum, p) => sum + p.totalHarga, 0);
 
-  const totalPiutang = cicilanBelumLunas.reduce((sum, c) => sum + c.nominal, 0);
+  // piutang = sisa tagihan (nominal dikurangi yang sudah dibayar sebagian), transaksi batal tidak dihitung
+  const totalPiutang = cicilanBelumLunas.reduce((sum, c) => sum + (c.nominal - c.terbayar), 0);
 
   res.json({
     hariIni: {

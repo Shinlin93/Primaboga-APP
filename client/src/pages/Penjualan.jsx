@@ -44,7 +44,8 @@ export default function Penjualan() {
   }
 
   const total = cart.reduce((sum, it) => sum + it.harga * it.qty, 0);
-  const nominalCicilan = Math.round(total / 10);
+  const nominalCicilan = Math.floor(total / 10);
+  const sisaPembulatan = total - nominalCicilan * 10; // dibebankan ke cicilan ke-10
 
   async function simpanTransaksi(e) {
     e.preventDefault();
@@ -203,7 +204,10 @@ export default function Penjualan() {
             {metode === "KREDIT" && total > 0 && (
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Cicilan</span>
-                <span>{formatRupiah(nominalCicilan)} x 10 bulan</span>
+                <span>
+                  {formatRupiah(nominalCicilan)} x 10 bulan
+                  {sisaPembulatan > 0 && ` (cicilan ke-10: ${formatRupiah(nominalCicilan + sisaPembulatan)})`}
+                </span>
               </div>
             )}
           </div>

@@ -106,18 +106,33 @@ router.post("/", async (req, res) => {
 
     // Jika Kredit: buat 10 jadwal cicilan, cicilan ke-1 otomatis Lunas hari ini
     if (metode === "KREDIT") {
-      const nominalPerCicilan = Math.round(totalHarga / 10);
-      const jadwal = buatJadwalCicilan(tanggal, nominalPerCicilan, 10);
+      const jadwal = buatJadwalCicilan(tanggal, totalHarga, 10);
 
       await tx.cicilan.createMany({
         data: jadwal.map((c) => ({
           penjualanId: penjualan.id,
           cicilanKe: c.cicilanKe,
           nominal: c.nominal,
+          terbayar: c.cicilanKe === 1 ? c.nominal : 0,
           tanggalJatuhTempo: c.tanggalJatuhTempo,
           status: c.cicilanKe === 1 ? "LUNAS" : "BELUM_LUNAS",
           tanggalBayar: c.cicilanKe === 1 ? tanggal : null,
         })),
+      });
+
+      // pembayaran pertama (cicilan ke-1) juga dicatat, supaya riwayat pembayaran lengkap
+      const pertama = jadwal[0].nominal;
+      await tx.pembayaran.create({
+        data: {
+          penjualanId: penjualan.id,
+          tanggal,
+          jumlah: pertama,
+          cicilanDari: 1,
+          cicilanSampai: 1,
+          totalTerbayarSetelah: pertama,
+          sisaPiutangSetelah: totalHarga - pertama,
+          tunggakanSetelah: 0,
+        },
       });
     }
 

@@ -20,19 +20,20 @@ function tambahBulanClamped(tanggalAwal, jumlahBulan) {
 }
 
 /**
- * Membuat jadwal 10 cicilan dari tanggal transaksi.
+ * Membuat jadwal cicilan dari tanggal transaksi.
+ * Total harga dibagi rata (dibulatkan ke bawah); cicilan TERAKHIR menanggung sisa pembulatan,
+ * sehingga jumlah semua cicilan selalu persis sama dengan total harga.
+ * Contoh: 999.995 / 10 -> 9 x 99.999 + 1 x 100.004.
  * Cicilan ke-1 jatuh tempo = tanggal transaksi itu sendiri (karena otomatis lunas saat itu juga).
  */
-function buatJadwalCicilan(tanggalTransaksi, nominalPerCicilan, jumlahCicilan = 10) {
+function buatJadwalCicilan(tanggalTransaksi, totalHarga, jumlahCicilan = 10) {
+  const dasar = Math.floor(totalHarga / jumlahCicilan);
   const jadwal = [];
   for (let ke = 1; ke <= jumlahCicilan; ke++) {
     const jatuhTempo =
       ke === 1 ? new Date(tanggalTransaksi) : tambahBulanClamped(tanggalTransaksi, ke - 1);
-    jadwal.push({
-      cicilanKe: ke,
-      nominal: nominalPerCicilan,
-      tanggalJatuhTempo: jatuhTempo,
-    });
+    const nominal = ke === jumlahCicilan ? totalHarga - dasar * (jumlahCicilan - 1) : dasar;
+    jadwal.push({ cicilanKe: ke, nominal, tanggalJatuhTempo: jatuhTempo });
   }
   return jadwal;
 }

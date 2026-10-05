@@ -157,6 +157,8 @@ function LaporanCicilan() {
             <th className="text-left px-4 py-3">Cicilan Ke</th>
             <th className="text-left px-4 py-3">Jatuh Tempo</th>
             <th className="text-left px-4 py-3">Nominal</th>
+            <th className="text-left px-4 py-3">Terbayar</th>
+            <th className="text-left px-4 py-3">Sisa</th>
             <th className="text-left px-4 py-3">Status</th>
           </tr>
         </thead>
@@ -168,7 +170,11 @@ function LaporanCicilan() {
               <td className="px-4 py-3">{c.cicilanKe}</td>
               <td className="px-4 py-3">{formatTanggal(c.tanggalJatuhTempo)}</td>
               <td className="px-4 py-3">{formatRupiah(c.nominal)}</td>
-              <td className="px-4 py-3">{c.status === "LUNAS" ? "Lunas" : "Belum Lunas"}</td>
+              <td className="px-4 py-3">{formatRupiah(c.terbayar)}</td>
+              <td className="px-4 py-3">{formatRupiah(c.nominal - c.terbayar)}</td>
+              <td className="px-4 py-3">
+                {c.status === "LUNAS" ? "Lunas" : c.status === "SEBAGIAN" ? "Sebagian" : "Belum Lunas"}
+              </td>
             </tr>
           ))}
         </tbody>

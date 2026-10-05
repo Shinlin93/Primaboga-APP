@@ -17,23 +17,17 @@ function formatTanggal(date) {
   });
 }
 
-/**
- * Render struk PENJUALAN (dipanggil sesaat setelah transaksi disimpan).
- * penjualan: hasil query Prisma dengan include { items, cicilan }
- */
-function buatStrukPenjualan(penjualan) {
-  const cicilanPertama = penjualan.cicilan?.find((c) => c.cicilanKe === 1);
-
-  const data = {
-    jenis_dokumen: "STRUK PENJUALAN",
+function dataDasar(penjualan, tanggal, jenisDokumen, metodeLabel) {
+  return {
+    jenis_dokumen: jenisDokumen,
     no_transaksi: penjualan.nomorTransaksi,
-    tanggal: formatTanggal(penjualan.tanggal),
+    tanggal: formatTanggal(tanggal),
     pelanggan_nama: penjualan.pelangganNama,
     pelanggan_alamat: penjualan.pelanggan?.alamat || "-",
     pelanggan_hp: penjualan.pelanggan?.hp || "-",
     sales_nama: penjualan.salesNama,
     sales_hp: penjualan.sales?.hp || "-",
-    metode: penjualan.metode === "KREDIT" ? "Kredit" : "Cash",
+    metode: metodeLabel,
     total_harga: formatRupiah(penjualan.totalHarga),
     items: penjualan.items.map((it, idx) => ({
       no: String(idx + 1),
@@ -42,14 +36,32 @@ function buatStrukPenjualan(penjualan) {
       harga: formatRupiah(it.hargaSatuan),
       subtotal: formatRupiah(it.subtotal),
     })),
-    kredit: penjualan.metode === "KREDIT",
+  };
+}
+
+/**
+ * Render struk PENJUALAN (dipanggil sesaat setelah transaksi disimpan).
+ * penjualan: hasil query Prisma dengan include { items, cicilan }
+ * Untuk kredit, bagian pembayaran selalu menunjukkan cicilan ke-1 (dibayar saat transaksi).
+ */
+function buatStrukPenjualan(penjualan) {
+  const kredit = penjualan.metode === "KREDIT";
+  const cicilanPertama = penjualan.cicilan?.find((c) => c.cicilanKe === 1);
+  const totalTagihan = (penjualan.cicilan || []).reduce((sum, c) => sum + c.nominal, 0);
+  const bayarPertama = cicilanPertama ? cicilanPertama.nominal : 0;
+
+  const data = {
+    ...dataDasar(penjualan, penjualan.tanggal, "STRUK PENJUALAN", kredit ? "Kredit" : "Cash"),
+    kredit,
     cicilan_nominal: cicilanPertama ? formatRupiah(cicilanPertama.nominal) : "",
     cicilan_jumlah: String(penjualan.cicilan?.length || 0),
-    cicilan_payment: penjualan.metode === "KREDIT" && !!cicilanPertama,
+    cicilan_payment: kredit && !!cicilanPertama,
     cicilan_ke: cicilanPertama ? `${cicilanPertama.cicilanKe} / ${penjualan.cicilan.length}` : "",
     jatuh_tempo: cicilanPertama ? formatTanggal(cicilanPertama.tanggalJatuhTempo) : "",
-    jumlah_bayar: cicilanPertama ? formatRupiah(cicilanPertama.nominal) : "",
-    sisa_cicilan: cicilanPertama ? String(penjualan.cicilan.length - 1) : "",
+    jumlah_bayar: formatRupiah(bayarPertama),
+    sisa_cicilan: formatRupiah(totalTagihan - bayarPertama), // sisa piutang
+    total_terbayar: formatRupiah(bayarPertama),
+    tunggakan: formatRupiah(0),
     status_cicilan: "LUNAS",
   };
 
@@ -57,43 +69,38 @@ function buatStrukPenjualan(penjualan) {
 }
 
 /**
- * Render bukti PEMBAYARAN CICILAN (dipanggil saat kasir menekan tombol "Bayar" di menu Pembayaran).
- * penjualan: hasil query Prisma dengan include { items, cicilan }
- * cicilanDibayar: satu row Cicilan yang baru saja dilunasi
+ * Render bukti PEMBAYARAN CICILAN untuk satu catatan Pembayaran.
+ * penjualan: hasil query Prisma dengan include { items, pelanggan, sales, cicilan }
+ * pembayaran: satu row Pembayaran (berisi snapshot saldo saat pembayaran terjadi)
  */
-function buatBuktiCicilan(penjualan, cicilanDibayar) {
+function buatBuktiPembayaran(penjualan, pembayaran) {
   const totalCicilan = penjualan.cicilan.length;
-  const sisaCicilan = penjualan.cicilan.filter(
-    (c) => c.status !== "LUNAS" && c.cicilanKe !== cicilanDibayar.cicilanKe
-  ).length;
+  const { cicilanDari, cicilanSampai } = pembayaran;
+  const cicilanAwal = penjualan.cicilan.find((c) => c.cicilanKe === cicilanDari);
+
+  // karena uang dialokasikan berurutan, cicilan 1..cicilanSampai sudah lunas
+  // kalau total terbayar >= jumlah nominal cicilan 1..cicilanSampai
+  const wajibSampai = penjualan.cicilan
+    .filter((c) => c.cicilanKe <= cicilanSampai)
+    .reduce((sum, c) => sum + c.nominal, 0);
+  const status = pembayaran.totalTerbayarSetelah >= wajibSampai ? "LUNAS" : "SEBAGIAN";
 
   const data = {
-    jenis_dokumen: "BUKTI PEMBAYARAN CICILAN",
-    no_transaksi: penjualan.nomorTransaksi,
-    tanggal: formatTanggal(cicilanDibayar.tanggalBayar || new Date()),
-    pelanggan_nama: penjualan.pelangganNama,
-    pelanggan_alamat: penjualan.pelanggan?.alamat || "-",
-    pelanggan_hp: penjualan.pelanggan?.hp || "-",
-    sales_nama: penjualan.salesNama,
-    sales_hp: penjualan.sales?.hp || "-",
-    metode: "Kredit",
-    total_harga: formatRupiah(penjualan.totalHarga),
-    items: penjualan.items.map((it, idx) => ({
-      no: String(idx + 1),
-      nama: it.namaBarang,
-      qty: String(it.qty),
-      harga: formatRupiah(it.hargaSatuan),
-      subtotal: formatRupiah(it.subtotal),
-    })),
+    ...dataDasar(penjualan, pembayaran.tanggal, "BUKTI PEMBAYARAN CICILAN", "Kredit"),
     kredit: true,
-    cicilan_nominal: formatRupiah(cicilanDibayar.nominal),
+    cicilan_nominal: cicilanAwal ? formatRupiah(cicilanAwal.nominal) : "",
     cicilan_jumlah: String(totalCicilan),
     cicilan_payment: true,
-    cicilan_ke: `${cicilanDibayar.cicilanKe} / ${totalCicilan}`,
-    jatuh_tempo: formatTanggal(cicilanDibayar.tanggalJatuhTempo),
-    jumlah_bayar: formatRupiah(cicilanDibayar.nominal),
-    sisa_cicilan: String(sisaCicilan),
-    status_cicilan: "LUNAS",
+    cicilan_ke:
+      cicilanDari === cicilanSampai
+        ? `${cicilanDari} / ${totalCicilan}`
+        : `${cicilanDari} - ${cicilanSampai} / ${totalCicilan}`,
+    jatuh_tempo: cicilanAwal ? formatTanggal(cicilanAwal.tanggalJatuhTempo) : "-",
+    jumlah_bayar: formatRupiah(pembayaran.jumlah),
+    sisa_cicilan: formatRupiah(pembayaran.sisaPiutangSetelah), // sisa piutang
+    total_terbayar: formatRupiah(pembayaran.totalTerbayarSetelah),
+    tunggakan: formatRupiah(pembayaran.tunggakanSetelah),
+    status_cicilan: status,
   };
 
   return renderTemplate(data);
@@ -107,4 +114,4 @@ function renderTemplate(data) {
   return doc.getZip().generate({ type: "nodebuffer" });
 }
 
-module.exports = { buatStrukPenjualan, buatBuktiCicilan };
+module.exports = { buatStrukPenjualan, buatBuktiPembayaran };

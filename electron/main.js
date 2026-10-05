@@ -32,7 +32,7 @@ function createWindow() {
   const isDev = !app.isPackaged;
   if (isDev) {
     // saat development: pakai Vite dev server (npm run dev di folder client)
-    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.loadURL("http://localhost:3000");
   } else {
     // saat production: load hasil build React (client/dist/index.html)
     mainWindow.loadFile(path.join(__dirname, "../client/dist/index.html"));
